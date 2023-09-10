@@ -1,0 +1,51 @@
+use leptos::*;
+use petgraph::prelude::GraphMap;
+use petgraph::Undirected;
+
+extern crate console_error_panic_hook;
+use std::panic;
+
+use crate::canvas::{context, draw_hex_grid};
+use crate::graph::hex_graph_with_random_remove;
+use crate::hex::Hex;
+
+pub mod canvas;
+pub mod consts;
+pub mod f_point;
+pub mod graph;
+pub mod hex;
+
+#[macro_use]
+extern crate lazy_static;
+
+// console::log_1(&format!("Has wall").into());
+
+fn main() {
+    panic::set_hook(Box::new(console_error_panic_hook::hook));
+
+    let graph = hex_graph_with_random_remove(20, 20, 150);
+
+    leptos::mount_to_body(|cx| view! { cx, <App graph=graph/> })
+}
+
+#[component]
+fn App(cx: Scope, graph: GraphMap<Hex, i32, Undirected>) -> impl IntoView {
+    let (count, set_count) = create_signal(cx, 0);
+
+    view! { cx,
+        <button
+            on:click=move |_| {
+                set_count(3);
+            }
+        >
+            "Click me: "
+            {count}
+        </button>
+        <MyCanvas graph />
+    }
+}
+
+#[component]
+fn MyCanvas(_cx: Scope, graph: GraphMap<Hex, i32, Undirected>) -> impl IntoView {
+    draw_hex_grid(&context(), graph);
+}
