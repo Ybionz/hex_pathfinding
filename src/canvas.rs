@@ -1,4 +1,4 @@
-use crate::consts::*;
+use crate::constants::*;
 use crate::f_point::FPoint;
 use crate::hex::Hex;
 use leptos::document;

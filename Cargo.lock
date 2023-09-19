@@ -576,6 +576,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
 
 [[package]]
+name = "hex_pathfinding"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "js-sys",
+ "lazy_static",
+ "leptos",
+ "petgraph",
+ "rand",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "html-escape"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -746,20 +760,6 @@ dependencies = [
  "server_fn",
  "tracing",
  "typed-builder",
-]
-
-[[package]]
-name = "leptos-tutorial"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "js-sys",
- "lazy_static",
- "leptos",
- "petgraph",
- "rand",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]

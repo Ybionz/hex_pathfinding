@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct FPoint {
     pub x: f64,
     pub y: f64,

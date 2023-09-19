@@ -10,13 +10,10 @@ use crate::graph::hex_graph_with_random_remove;
 use crate::hex::Hex;
 
 pub mod canvas;
-pub mod consts;
+pub mod constants;
 pub mod f_point;
 pub mod graph;
 pub mod hex;
-
-#[macro_use]
-extern crate lazy_static;
 
 // console::log_1(&format!("Has wall").into());
 
