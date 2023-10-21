@@ -1,5 +1,5 @@
-use crate::f_point::FPoint;
 use crate::constants::*;
+use crate::f_point::FPoint;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hex {
@@ -16,6 +16,11 @@ impl Hex {
             return None;
         }
         return Some(Hex::new(col, row));
+    }
+    pub fn into_f_point(self) -> FPoint {
+        let x = START_X + f64::from(self.col) * *W * 2. + *W * f64::from(self.row % 2);
+        let y = START_Y + f64::from(self.row) * H * 3. / 2.;
+        FPoint::new(x, y)
     }
     pub fn neighbors(self) -> Vec<Option<Hex>> {
         let mut vec_options = Vec::new();
@@ -41,8 +46,9 @@ impl Hex {
     }
 
     pub fn corners(self) -> Vec<FPoint> {
-        let x = START_X + f64::from(self.col) * *W * 2. + *W * f64::from(self.row % 2);
-        let y = START_Y + f64::from(self.row) * H * 3. / 2.;
+        let center = self.into_f_point();
+        let x = center.x;
+        let y = center.y;
         vec![
             FPoint::new(x, y - H),
             FPoint::new(x + *W, y - H / 2.),

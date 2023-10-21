@@ -51,6 +51,25 @@ fn create_hex_nodes(rows: i32, cols: i32) -> GraphMap<Hex, i32, Undirected> {
     g
 }
 
+pub fn remove_all_edges_for_node(graph: &mut GraphMap<Hex, i32, Undirected>, hex: Hex) {
+    graph
+        .clone()
+        .edges(hex)
+        .clone()
+        .into_iter()
+        .for_each(|edge| {
+            let _ = &graph.remove_edge(edge.0, edge.1);
+        });
+
+    // (&graph)
+    //     .edges(hex)
+    //     // .for_each(|edge| {
+    //     .for_each(|(node1, node2, _)| {
+    //         &graph.remove_edge(node1, node2);
+    //     });
+    // graph
+}
+
 fn create_edges(graph: &mut GraphMap<Hex, i32, Undirected>) {
     let edge_list: Vec<(Hex, Vec<Hex>)> = graph
         .nodes()
