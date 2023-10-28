@@ -1,4 +1,5 @@
 use crate::constants::*;
+use crate::event::Event;
 use crate::f_point::FPoint;
 use crate::graph::remove_all_edges_for_node;
 use crate::hex::Hex;
@@ -10,6 +11,7 @@ use leptos::WriteSignal;
 use petgraph::prelude::GraphMap;
 use petgraph::Undirected;
 use std::cell::Cell;
+use std::f64::consts::PI;
 use std::iter::zip;
 use std::sync::Arc;
 use wasm_bindgen::prelude::Closure;
@@ -41,13 +43,47 @@ fn build_hex_bundles(graph: &GraphMap<Hex, i32, Undirected>) -> Vec<HexBundle> {
     hex_bundles
 }
 
+pub fn draw_hex_graph(graph: &GraphMap<Hex, i32, Undirected>) {
+    graph.nodes().for_each(|hex| draw_hex_center(hex));
+    graph
+        .all_edges()
+        .for_each(|(from, to, _)| draw_edge(from, to));
+}
+
+fn draw_hex_center(hex: Hex) {
+    let context = context();
+    context.begin_path();
+    context.arc(hex.into_f_point().x, hex.into_f_point().y, 7., 0., 2. * PI);
+    context.set_fill_style(&JsValue::from_str("black"));
+    context.fill();
+
+    //     context.beginPath();
+    // context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+    // context.fillStyle = 'green';
+    // context.fill();
+    // context.lineWidth = 5;
+    // context.strokeStyle = '#003300';
+    // context.stroke();
+}
+
+fn draw_edge(from: Hex, to: Hex) {
+    let path = Path2d::new().unwrap();
+    let from_point = from.into_f_point();
+    let to_point = to.into_f_point();
+    path.move_to(from_point.x, from_point.y);
+    path.line_to(to_point.x, to_point.y);
+    let context = context();
+    context.set_line_width(5.);
+    context.stroke_with_path(&path);
+}
+
 pub fn draw_hex_grid(graph: &GraphMap<Hex, i32, Undirected>) {
     graph.nodes().into_iter().for_each(|n| {
         draw_hex(&context(), n, &graph.neighbors(n));
     });
 }
 
-fn hover_hex_closure(hex_bundles: Vec<HexBundle>) -> Closure<dyn FnMut(MouseEvent)> {
+fn hover_hex_closure<'a>(hex_bundles: Vec<HexBundle>) -> Event<'a> {
     let red_hex: Arc<Cell<Option<HexBundle>>> = Arc::new(Cell::new(None));
     let hover_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
         if let Some(bundle) = red_hex.take() {
@@ -67,14 +103,14 @@ fn hover_hex_closure(hex_bundles: Vec<HexBundle>) -> Closure<dyn FnMut(MouseEven
                 red_hex.set(Some(bundle.clone()));
             });
     });
-    hover_closure
+    Event::new("mousemove", &hover_closure)
 }
 
-fn add_click_event(
+fn add_click_event<'a, 'b>(
     hex_bundles: Vec<HexBundle>,
-    hover_closure: Closure<dyn FnMut(MouseEvent)>,
+    hover_event: &'a Event,
     set_graph: WriteSignal<GraphMap<Hex, i32, Undirected>>,
-) {
+) -> (Event<'b>, Event<'a>) {
     let remove_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
         (&hex_bundles)
             .into_iter()
@@ -86,32 +122,60 @@ fn add_click_event(
                 )
             })
             .for_each(|bundle| {
-                let _ = canvas().remove_event_listener_with_callback(
-                    "mousemove",
-                    hover_closure.as_ref().unchecked_ref(),
-                );
+                remove_event(&hover_event);
                 set_graph.update(|graph| {
                     remove_all_edges_for_node(graph, bundle.hex);
                 });
             });
     });
+
+    let handler = Box::new(|| {
+        web_sys::console::log_1(&"click".into());
+    }) as Box<dyn Fn()>;
+
+    let cb: Closure<dyn Fn()> = Closure::wrap(handler);
+
+    canvas()
+        .add_event_listener_with_callback(&"click".to_owned(), cb.as_ref().unchecked_ref())
+        .unwrap();
+
     let _ = canvas().add_event_listener_with_callback_and_add_event_listener_options(
         "click",
         remove_closure.as_ref().unchecked_ref(),
         AddEventListenerOptions::new().once(true),
     );
-    remove_closure.forget();
+    let event = Event::new("click", &remove_closure);
+    (event, *hover_event)
 }
 
-pub fn add_event_listeners_to_canvas(
-    graph: &GraphMap<Hex, i32, Undirected>,
+pub fn remove_events(events: &Vec<Event>) {
+    events.into_iter().for_each(|e| remove_event(&e));
+}
+
+fn remove_event(event: &Event) {
+    let _ = canvas().remove_event_listener_with_callback(
+        &event.event_type,
+        &event.closure.as_ref().unchecked_ref(),
+    );
+}
+
+pub fn add_event_listeners_to_canvas<'a>(
+    graph: &'a GraphMap<Hex, i32, Undirected>,
     set_graph: WriteSignal<GraphMap<Hex, i32, Undirected>>,
-) {
+) -> Vec<Event<'a>> {
     let hex_bundles: Vec<HexBundle> = build_hex_bundles(graph);
-    let hover_closure = hover_hex_closure(hex_bundles.clone());
-    let _ = canvas()
-        .add_event_listener_with_callback("mousemove", hover_closure.as_ref().unchecked_ref());
-    add_click_event(hex_bundles, hover_closure, set_graph);
+    let hover_event = hover_hex_closure(hex_bundles.clone());
+    let _ = canvas().add_event_listener_with_callback(
+        &hover_event.event_type,
+        &hover_event.closure.as_ref().unchecked_ref(),
+    );
+    let (click_event, hover_event_2) = add_click_event(hex_bundles, &hover_event, set_graph);
+    let vec = vec![hover_event_2, click_event];
+    vec
+}
+
+pub fn clear_canvas() {
+    context().clear_rect(0., 0., 1000., 1000.);
 }
 
 fn canvas() -> HtmlCanvasElement {
@@ -133,7 +197,7 @@ fn draw_bundle(hex_bundle: &HexBundle, hover: bool, context: &CanvasRenderingCon
 
     draw_filled_hex(hex_bundle.hex, context, colour);
 
-    draw_hex_edges(hex_bundle.edges.clone(), context);
+    draw_hex_borders(hex_bundle.edges.clone(), context);
 }
 
 fn draw_hex(
@@ -179,10 +243,10 @@ fn hex_edges_for_node(
     vec
 }
 
-fn draw_hex_edges(edges: Vec<HexBorder>, context: &CanvasRenderingContext2d) {
-    edges
+fn draw_hex_borders(borders: Vec<HexBorder>, context: &CanvasRenderingContext2d) {
+    borders
         .into_iter()
-        .for_each(|edge| draw_line_between(edge.from, edge.to, edge.wall, context));
+        .for_each(|border| draw_line_between(border.from, border.to, border.wall, context));
 }
 
 fn draw_filled_hex(node: Hex, context: &CanvasRenderingContext2d, color: &str) {
