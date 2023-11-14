@@ -37,17 +37,18 @@ fn App() -> impl IntoView {
 
     let (style, set_style) = create_signal(GraphStyle::Grid);
 
-    let (events, set_events ) = create_signal::<Vec<Event>>(Vec::new());
+    let (events, set_events) = create_signal::<Vec<Event>>(Vec::new());
 
     create_effect(move |_| {
-        events.with(|_events| remove_events(_events) );
+        events.with(|_events| remove_events(_events));
         clear_canvas();
-        if (style() == GraphStyle::Grid) {
+        if style() == GraphStyle::Grid {
             draw_hex_grid(&graph());
-            // let e = add_event_listeners_to_canvas(&graph.get(), set_graph);
-            // set_events(e);
+            let e = add_event_listeners_to_canvas(&graph.get(), set_graph);
+            set_events(e);
         } else {
-            draw_hex_graph(&graph())
+            draw_hex_graph(&graph());
+            draw_hex_grid(&graph());
         }
     });
 
@@ -57,16 +58,5 @@ fn App() -> impl IntoView {
         >
             {move || format!("Change style to {:?}",style().reverse())}
         </button>
-        // <MyCanvas graph=graph() set_graph=set_graph/>
     }
 }
-
-// #[component]
-// fn MyCanvas(
-//     graph: GraphMap<Hex, i32, Undirected>,
-//     set_graph: WriteSignal<GraphMap<Hex, i32, Undirected>>,
-// ) -> impl IntoView {
-//     // create_effect(move |_| {
-//     //     draw_hex_grid(&context(), &graph, set_graph);
-//     // });
-// }

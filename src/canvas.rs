@@ -83,7 +83,7 @@ pub fn draw_hex_grid(graph: &GraphMap<Hex, i32, Undirected>) {
     });
 }
 
-fn hover_hex_closure<'a>(hex_bundles: Vec<HexBundle>) -> Event<'a> {
+fn hover_hex_closure<'a>(hex_bundles: Vec<HexBundle>) -> Event {
     let red_hex: Arc<Cell<Option<HexBundle>>> = Arc::new(Cell::new(None));
     let hover_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
         if let Some(bundle) = red_hex.take() {
@@ -103,14 +103,14 @@ fn hover_hex_closure<'a>(hex_bundles: Vec<HexBundle>) -> Event<'a> {
                 red_hex.set(Some(bundle.clone()));
             });
     });
-    Event::new("mousemove", &hover_closure)
+    Event::new("mousemove", hover_closure)
 }
 
-fn add_click_event<'a, 'b>(
+fn add_click_event(
     hex_bundles: Vec<HexBundle>,
-    hover_event: &'a Event,
+    hover_event: Event,
     set_graph: WriteSignal<GraphMap<Hex, i32, Undirected>>,
-) -> (Event<'b>, Event<'a>) {
+) -> Event {
     let remove_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
         (&hex_bundles)
             .into_iter()
@@ -129,23 +129,13 @@ fn add_click_event<'a, 'b>(
             });
     });
 
-    let handler = Box::new(|| {
-        web_sys::console::log_1(&"click".into());
-    }) as Box<dyn Fn()>;
-
-    let cb: Closure<dyn Fn()> = Closure::wrap(handler);
-
-    canvas()
-        .add_event_listener_with_callback(&"click".to_owned(), cb.as_ref().unchecked_ref())
-        .unwrap();
-
+    let event = Event::new("click", remove_closure);
     let _ = canvas().add_event_listener_with_callback_and_add_event_listener_options(
         "click",
-        remove_closure.as_ref().unchecked_ref(),
+        event.js_value.unchecked_ref(),
         AddEventListenerOptions::new().once(true),
     );
-    let event = Event::new("click", &remove_closure);
-    (event, *hover_event)
+    event
 }
 
 pub fn remove_events(events: &Vec<Event>) {
@@ -153,24 +143,22 @@ pub fn remove_events(events: &Vec<Event>) {
 }
 
 fn remove_event(event: &Event) {
-    let _ = canvas().remove_event_listener_with_callback(
-        &event.event_type,
-        &event.closure.as_ref().unchecked_ref(),
-    );
+    let _ = canvas()
+        .remove_event_listener_with_callback(&event.event_type, &event.js_value.unchecked_ref());
 }
 
-pub fn add_event_listeners_to_canvas<'a>(
-    graph: &'a GraphMap<Hex, i32, Undirected>,
+pub fn add_event_listeners_to_canvas(
+    graph: &GraphMap<Hex, i32, Undirected>,
     set_graph: WriteSignal<GraphMap<Hex, i32, Undirected>>,
-) -> Vec<Event<'a>> {
+) -> Vec<Event> {
     let hex_bundles: Vec<HexBundle> = build_hex_bundles(graph);
     let hover_event = hover_hex_closure(hex_bundles.clone());
     let _ = canvas().add_event_listener_with_callback(
         &hover_event.event_type,
-        &hover_event.closure.as_ref().unchecked_ref(),
+        &hover_event.js_value.unchecked_ref(),
     );
-    let (click_event, hover_event_2) = add_click_event(hex_bundles, &hover_event, set_graph);
-    let vec = vec![hover_event_2, click_event];
+    let click_event = add_click_event(hex_bundles, hover_event.clone(), set_graph);
+    let vec = vec![hover_event, click_event];
     vec
 }
 
